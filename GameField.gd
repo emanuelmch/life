@@ -2,12 +2,9 @@ extends Viewport
 
 const MAX_GAME_SPEED = 60
 const TILE_SIZE = 32
+const DEFAULT_TILE_ZOOM_SIZE = TILE_SIZE / 2
 const CELL_DEAD = 0
 const CELL_LIVE = 1
-
-# FIXME: INFINITY!!!
-const width = 50
-const height = 37
 
 export var target_speed = 0 setget set_target_speed
 export var actual_speed = 0
@@ -17,12 +14,14 @@ var _tick_interval = 0 # In seconds
 var _fps_counter = 0
 var _fps_seconds = 0
 
+var _current_gen = {}
+
 func _ready():
 	set_process(target_speed != 0)
 
 	_ready_camera()
-	_ready_cells()
 	_do_the_gun()
+	set_target_speed(MAX_GAME_SPEED)
 
 func _input(event):
 	if event.is_action_pressed("ui_accept"):
@@ -32,8 +31,13 @@ func _input(event):
 	elif event.is_action_pressed("ui_down"):
 		set_target_speed(target_speed - 1)
 	elif event.is_action_pressed("toggle_cell"):
-		var pos = ($GameField.get_local_mouse_position()/TILE_SIZE).floor()
-		$GameField.set_cellv(pos, 1-$GameField.get_cellv(pos))
+		var cell = ($GameField.get_local_mouse_position()/TILE_SIZE).floor()
+		if _current_gen.has(cell):
+			$GameField.set_cellv(cell, CELL_DEAD)
+			_current_gen.erase(cell)
+		else:
+			$GameField.set_cellv(cell, CELL_LIVE)
+			_current_gen[cell] = 0
 
 func _process(delta):
 	_next_tick -= delta
@@ -49,17 +53,11 @@ func _process(delta):
 		_next_tick += _tick_interval
 		_next_generation()
 
-func _ready_camera():
-	var width_px = width * TILE_SIZE
-	var height_px = height * TILE_SIZE
-	
-	$GameField/GameFieldCamera.position = Vector2(width_px, height_px)/2
-	$GameField/GameFieldCamera.zoom = Vector2(width_px, height_px) / get_viewport().size
 
-func _ready_cells():
-	for x in range(width):
-		for y in range(height):
-			$GameField.set_cell(x, y, CELL_DEAD)
+func _ready_camera():
+	var mySize = (get_viewport().size / TILE_SIZE) * (get_viewport().size / DEFAULT_TILE_ZOOM_SIZE)
+	$GameFieldCamera.position = mySize / 2
+	$GameFieldCamera.zoom = mySize / get_viewport().size
 
 func _do_the_gun():
 	var gun_parts = [
@@ -70,33 +68,45 @@ func _do_the_gun():
 		[35,3], [35,4], [36,3], [36,4]
 	]
 	for gun_part in gun_parts:
-		$GameField.set_cell(gun_part[0], gun_part[1], CELL_LIVE)
+		var cell = Vector2(gun_part[0], gun_part[1])
+		_current_gen[cell] = 0
+		$GameField.set_cellv(cell, CELL_LIVE)
 
 func _next_generation():
-	var next_gen_buffer = []
-	for x in range(width):
-		var next_gen_column = []
-		for y in range(height):
-			var live_neighbors = _count_live_neighbors(x, y)
-			if $GameField.get_cell(x, y) == CELL_LIVE:
-				next_gen_column.append(live_neighbors in [2, 3])
+	var next_gen = {}
+	var new_cells = {}
+	for cell in _current_gen:
+		var live_neighbors = 0
+
+		for neighbor in _get_neighbors(cell):
+			if _current_gen.has(neighbor):
+				live_neighbors += 1
 			else:
-				next_gen_column.append(live_neighbors == 3)
-		
-		next_gen_buffer.append(next_gen_column)
+				var count = new_cells.get(neighbor, 0)
+				new_cells[neighbor] = count + 1
 
-	for x in range(width):
-		for y in range(height):
-			$GameField.set_cell(x, y, CELL_LIVE if next_gen_buffer[x][y] else CELL_DEAD)
+		# Cells remain alive if they have exactly 2 or 3 live neighbors
+		if live_neighbors in [2, 3]:
+				next_gen[cell] = 0
+				$GameField.set_cellv(cell, CELL_LIVE)
+		else:
+			$GameField.set_cellv(cell, CELL_DEAD)
 
-func _count_live_neighbors(x, y):
-	var live_neighbors = 0
+	for cell in new_cells:
+		# New cells are born on exactly 3 neighbors
+		if new_cells.get(cell) == 3:
+				next_gen[cell] = 0
+				$GameField.set_cellv(cell, CELL_LIVE)
+
+	_current_gen = next_gen
+
+func _get_neighbors(cell):
+	var neighbors = []
 	for x_off in [-1, 0, 1]:
 		for y_off in [-1, 0 ,1]:
 			if x_off == 0 and y_off == 0: continue
-			if $GameField.get_cell(x+x_off, y+y_off) == CELL_LIVE:
-				live_neighbors += 1
-	return live_neighbors
+			neighbors.append(cell + Vector2(x_off, y_off))
+	return neighbors
 
 func set_target_speed(new_target_speed):
 	target_speed = clamp(new_target_speed, 0, MAX_GAME_SPEED)

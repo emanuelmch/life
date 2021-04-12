@@ -41,8 +41,7 @@ script = ExtResource( 1 )
 [node name="GameField" type="TileMap" parent="."]
 tile_set = SubResource( 1 )
 cell_size = Vector2( 32, 32 )
-cell_custom_transform = Transform2D( 32, 0, 0, 32, 0, 0 )
 format = 1
 
-[node name="GameFieldCamera" type="Camera2D" parent="GameField"]
+[node name="GameFieldCamera" type="Camera2D" parent="."]
 current = true

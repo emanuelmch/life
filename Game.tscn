@@ -40,7 +40,5 @@ fit_content_height = true
 __meta__ = {
 "_edit_use_anchors_": false
 }
-
-[node name="Timer" type="Timer" parent="."]
-autostart = true
-[connection signal="timeout" from="Timer" to="." method="_on_Timer_timeout"]
+[connection signal="actual_speed_changed" from="ViewportContainer/GameField" to="." method="_on_GameField_actual_speed_changed"]
+[connection signal="target_speed_changed" from="ViewportContainer/GameField" to="." method="_on_target_speed_changed"]

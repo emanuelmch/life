@@ -8,6 +8,9 @@ const CELL_LIVE = 1
 
 export var target_speed = 0 setget set_target_speed
 export var actual_speed = 0
+signal target_speed_changed(target_speed)
+signal actual_speed_changed(actual_speed)
+
 var _next_tick = 0
 var _tick_interval = 0 # In seconds
 
@@ -44,7 +47,9 @@ func _process(delta):
 	_fps_seconds += delta
 	
 	if _fps_seconds > 1:
-		actual_speed = _fps_counter
+		if (_fps_counter != actual_speed):
+			actual_speed = _fps_counter
+			emit_signal("actual_speed_changed", actual_speed)
 		_fps_counter = 0
 		_fps_seconds -= 1
 
@@ -109,6 +114,9 @@ func _get_neighbors(cell):
 	return neighbors
 
 func set_target_speed(new_target_speed):
+	if target_speed == new_target_speed:
+		return
+
 	target_speed = clamp(new_target_speed, 0, MAX_GAME_SPEED)
 	if target_speed > 0:
 		_tick_interval = (1.0 / target_speed)
@@ -116,8 +124,5 @@ func set_target_speed(new_target_speed):
 	else:
 		_tick_interval = 0
 		set_process(false)
-	
 
-
-
-
+	emit_signal("target_speed_changed", target_speed)

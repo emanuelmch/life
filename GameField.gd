@@ -22,13 +22,15 @@ var _current_gen = {}
 func _ready():
 	set_process(target_speed != 0)
 
-	_ready_camera()
-	_do_the_gun()
-	set_target_speed(MAX_GAME_SPEED)
+	_reset_camera()
+	do_the_gun()
 
 func _input(event):
 	if event.is_action_pressed("ui_accept"):
-		set_target_speed(0)
+		if target_speed == 0:
+			set_target_speed(MAX_GAME_SPEED)
+		else:
+			set_target_speed(0)
 	elif event.is_action_pressed("ui_up"):
 		set_target_speed(target_speed + 1)
 	elif event.is_action_pressed("ui_down"):
@@ -59,23 +61,10 @@ func _process(delta):
 		_next_generation()
 
 
-func _ready_camera():
+func _reset_camera():
 	var mySize = (get_viewport().size / TILE_SIZE) * (get_viewport().size / DEFAULT_TILE_ZOOM_SIZE)
 	$GameFieldCamera.position = mySize / 2
 	$GameFieldCamera.zoom = mySize / get_viewport().size
-
-func _do_the_gun():
-	var gun_parts = [
-		[1,5], [1,6], [2,5], [2, 6],
-		[14,3], [13,3], [12,4], [11,5], [11,6], [11,7], [12,8], [13,9],[14,9],
-		[15,6], [16,4], [17,5], [17, 6], [18,6], [17,7], [16,8],
-		[21,3], [21,4], [21,5], [22,3], [22,4], [22,5], [23,2], [23,6], [25,1], [25,2], [25,6], [25,7],
-		[35,3], [35,4], [36,3], [36,4]
-	]
-	for gun_part in gun_parts:
-		var cell = Vector2(gun_part[0], gun_part[1])
-		_current_gen[cell] = 0
-		$GameField.set_cellv(cell, CELL_LIVE)
 
 func _next_generation():
 	var next_gen = {}
@@ -126,3 +115,24 @@ func set_target_speed(new_target_speed):
 		set_process(false)
 
 	emit_signal("target_speed_changed", target_speed)
+
+func reset():
+	set_target_speed(0)
+	_reset_camera()
+	for cell in _current_gen:
+		$GameField.set_cellv(cell, CELL_DEAD)
+	_current_gen.clear()
+
+func do_the_gun():
+	reset()
+	var gun_parts = [
+		[1,5], [1,6], [2,5], [2, 6],
+		[14,3], [13,3], [12,4], [11,5], [11,6], [11,7], [12,8], [13,9],[14,9],
+		[15,6], [16,4], [17,5], [17, 6], [18,6], [17,7], [16,8],
+		[21,3], [21,4], [21,5], [22,3], [22,4], [22,5], [23,2], [23,6], [25,1], [25,2], [25,6], [25,7],
+		[35,3], [35,4], [36,3], [36,4]
+	]
+	for gun_part in gun_parts:
+		var cell = Vector2(gun_part[0], gun_part[1])
+		_current_gen[cell] = 0
+		$GameField.set_cellv(cell, CELL_LIVE)

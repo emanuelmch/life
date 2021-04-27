@@ -1,11 +1,11 @@
 extends Viewport
 
-const MAX_GAME_SPEED = 60
 const TILE_SIZE = 32
-const DEFAULT_TILE_ZOOM_SIZE = TILE_SIZE / 2
 const CELL_DEAD = 0
 const CELL_LIVE = 1
 
+# Game Speed
+const MAX_GAME_SPEED = 60
 export var target_speed = 0 setget set_target_speed
 export var actual_speed = 0
 signal target_speed_changed(target_speed)
@@ -17,6 +17,17 @@ var _tick_interval = 0 # In seconds
 var _fps_counter = 0
 var _fps_seconds = 0
 
+# Camera
+const DEFAULT_TILE_ZOOM_SIZE = TILE_SIZE / 2
+const MIN_ZOOM_SCALE = 0.5
+const MAX_ZOOM_SCALE = 10.0
+const ZOOM_DURATION = 0.2
+const ZOOM_STEP = 0.1
+
+var _initial_zoom = Vector2(0, 0)
+var _zoom_scale = 1.0 setget _set_zoom_scale
+
+# Game Logic
 var _current_gen = {}
 
 func _ready():
@@ -35,6 +46,12 @@ func _input(event):
 		set_target_speed(target_speed + 1)
 	elif event.is_action_pressed("ui_down"):
 		set_target_speed(target_speed - 1)
+	elif event is InputEventMouseMotion and Input.is_mouse_button_pressed(BUTTON_MIDDLE):
+		_move_camera(event.relative)
+	elif event.is_action_pressed("zoom_in"):
+		_set_zoom_scale(_zoom_scale - ZOOM_STEP)
+	elif event.is_action_pressed("zoom_out"):
+		_set_zoom_scale(_zoom_scale + ZOOM_STEP)
 	elif event.is_action_pressed("toggle_cell"):
 		var cell = ($GameField.get_local_mouse_position()/TILE_SIZE).floor()
 		if _current_gen.has(cell):
@@ -64,7 +81,27 @@ func _process(delta):
 func _reset_camera():
 	var mySize = (get_viewport().size / TILE_SIZE) * (get_viewport().size / DEFAULT_TILE_ZOOM_SIZE)
 	$GameFieldCamera.position = mySize / 2
-	$GameFieldCamera.zoom = mySize / get_viewport().size
+	_initial_zoom = mySize / get_viewport().size
+	$GameFieldCamera.zoom = _initial_zoom
+
+
+func _move_camera(movement):
+	$GameFieldCamera.position -= (movement * $GameFieldCamera.zoom)
+
+
+func _set_zoom_scale(value):
+	_zoom_scale = clamp(value, MIN_ZOOM_SCALE, MAX_ZOOM_SCALE)
+	$GameFieldCamera/ZoomTween.interpolate_property(
+		$GameFieldCamera,
+		"zoom",
+		$GameFieldCamera.zoom,
+		_initial_zoom * _zoom_scale,
+		ZOOM_DURATION,
+		$GameFieldCamera/ZoomTween.TRANS_SINE,
+		$GameFieldCamera/ZoomTween.EASE_OUT
+	)
+	$GameFieldCamera/ZoomTween.start()
+
 
 func _next_generation():
 	var next_gen = {}

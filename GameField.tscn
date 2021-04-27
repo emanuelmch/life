@@ -45,3 +45,5 @@ format = 1
 
 [node name="GameFieldCamera" type="Camera2D" parent="."]
 current = true
+
+[node name="ZoomTween" type="Tween" parent="GameFieldCamera"]
